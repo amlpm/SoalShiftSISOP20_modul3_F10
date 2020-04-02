@@ -82,7 +82,18 @@ int main(int argc, const char * argv[]){
 	pid_t ppp = getpid();
 	if(choice == 1){
 		pid_t id = fork();
-		if(id){
+		if(!id){
+			FILE * pidProcess = popen("pidof soal1_traizone", "r");
+			int pida = 0;
+			while(fscanf(pidProcess, "%d", &pida) != EOF){
+				id = fork();
+				if(!id){
+					char pid[10];
+					snprintf(pid, sizeof(pid), "%d", pida);
+					char * argv[] = {"kill", "-9", pid, NULL};
+					execv("/bin/kill", argv);
+				}
+			}
 			char pid[10];
 			snprintf(pid, sizeof(pid), "%d", ppp);
 			char * argv[] = {"kill", "-9", pid, NULL};

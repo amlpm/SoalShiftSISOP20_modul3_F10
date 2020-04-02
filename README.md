@@ -557,7 +557,45 @@ Fungsi ini akan menambahkan Affective Point dengan ap.
 
 ### Pokezone
 
+#### GameData Struct
+```
+typedef struct GameData_s{
+	int isRunning;
+	WildPokemon_t * sharedPokemon;
+	Shop_t * sharedShop;
+}GameData_t;
+```
+Struct game data berisi data-data yang banyak digunakan oleh fungsi lainnya.
+- variabel isRunning digunakan untuk mengatur jalannya program, jika program ingin mematikan dirinya, dapat mengisi isRunning = 0.
 
+#### Struct Wild Pokemon
+```
+typedef struct WildPokemon_s{
+	int isLocked;
+	char name[20];
+	int type;
+	int price;
+	int capRateA;
+	int capRateB;
+	int escapeRateA;
+	int escapeRateB;
+}WildPokemon_t;
+```
+Struct Wild Pokemon digunakan untuk mengetahui data pokemon yang belum tertangkap atau pokemon yang berada di capture mode.
+
+#### Struct Shop
+```
+typedef struct Shop_s{
+	int isLocked;
+	int lullabyPowder;
+	int lullabyPowderPrice;
+	int pokeball;
+	int pokeballPrice;
+	int berry;
+	int berryPrice;
+}Shop_t;
+```
+Struct Shop digunakan untuk mengetahui data shop yang bisa dibeli oleh player.
 ## 2. Soal 2
 ## 3. Soal 3
 ## 4. Soal 4
