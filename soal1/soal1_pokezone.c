@@ -165,6 +165,12 @@ void * randomizePokemonThread(void * param){
 			sharedPokemon->escapeRateB = 5;
 			sharedPokemon->type = 2;
 		}
+		random = generateRandom(8000);
+		if(random == 0){
+			sharedPokemon->capRateA-= 2;
+			sharedPokemon->escapeRateA+=1;
+			sharedPokemon->price+=5000;
+		}
 		sleep(1);
 	}
 }

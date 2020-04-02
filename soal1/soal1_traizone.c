@@ -34,6 +34,7 @@ typedef struct Shop_s{
 }Shop_t;
 
 typedef struct Pokemon_s{
+	int released;
 	char name[20];
 	int type;
 	int ap;
@@ -67,6 +68,11 @@ typedef struct WildPokemonParam_s{
 	GameData_t * gameData;
 	int isRunning;
 }WildPokemonParam_t;
+
+typedef struct PokemonParam_s{
+	Pokemon_t * pokemon;
+	GameData_t * gameData;
+}PokemonParam_t;
 
 void * cariPokemonThread(void * param);
 void * pokemonThread(void * param);
@@ -154,6 +160,7 @@ int addPokemon(PokeBag_t * pokeBag, Pokemon_t * pokemon){
 }
 
 void removePokemon(PokeBag_t * pokeBag, int index){
+	pokeBag->pokemon[index-1]->released = 1;
 	free(pokeBag->pokemon[index-1]);
 	for(int i = index-1; i < pokeBag->count-1; i++){
 		pokeBag->pokemon[i] = pokeBag->pokemon[i];
@@ -368,6 +375,14 @@ void captureMode(GameData_t * gameData){
 
 					Pokemon_t * tamedPokemon = tamePokemon(pokemon);
 					if(addPokemon(gameData->pokeBag, tamedPokemon)){
+						pthread_t t;
+						PokemonParam_t * param = malloc(sizeof(PokemonParam_t));
+						param->gameData = gameData;
+						param->pokemon = tamedPokemon;
+						if(pthread_create(&t, NULL, &pokemonThread, param) < 0){
+							printf("can't create thread\n");
+							exit(EXIT_FAILURE);
+						}
 						printf("Tertangkap\n");
 						changeState(&gameData->gameState, NORMAL_MODE);
 						pokemon->isLocked = 0;
@@ -435,6 +450,30 @@ void * cariPokemonThread(void * param){
 		}
 		sleep(10);
 	}
+}
+
+void * pokemonThread(void * param){
+	PokemonParam_t * p = (PokemonParam_t *)param;
+	while (p->gameData->isRunning && !p->pokemon->released){
+		sleep(10);
+		if(p->gameData->gameState == CAPTURE_MODE)continue;
+		p->pokemon->ap -= 10;
+		if(p->pokemon->ap == 0){
+			int random = generateRandom(10);
+			if(random == 0){
+				p->pokemon->ap = 50;
+			}else{
+				//lepas
+				for(int i = 0; i < p->gameData->pokeBag->count; i++){
+					if(p->gameData->pokeBag->pokemon[i] == p->pokemon){
+						removePokemon(p->gameData->pokeBag, i);
+						break;
+					}
+				}
+			}
+		}
+	}
+	
 }
 
 void * lullabyThread(void * param){
