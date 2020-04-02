@@ -481,6 +481,83 @@ Fungsi ini akan dieksekusi saat gameState adalah Capture Mode.
 - Untuk pilihan kedua, yaitu menggunakan lullaby powder. Untuk menggunakannya, akan dijalankan thread ```lullabyThread```.
 - Untuk pilihan ketiga, yaitu melepas pokemon. ```isLocked``` di set 0 dan mengganti state dengan fungsi ```changeState```.
 
+#### cariPokemon Thread
+```
+void * cariPokemonThread(void * param){
+	GameData_t * gameData = (GameData_t *) param;
+	while(gameData->cariPokemon){
+		if(generateRandom(10) <= 5){
+			gameData->cariPokemon = 0;
+			changeState(&gameData->gameState, CAPTURE_MODE);
+			break;
+		}
+		sleep(10);
+	}
+}
+```
+Thread ini akan berjalan, saat pemain menyalakan cariPokemon.
+- Thread akan loopin sampai cariPokemon bernilai 0
+- untuk setiap 10 detik, akan ada chance 6/10 mendapatkan pokemon. Saat mendapatkan pokemon, cariPokemon akan dinonaktifkan. Lalu state akan diganti ke capture mode.
+
+#### wildPokemon Thread
+```
+void * wildpokemonThread(void * param){
+	WildPokemonParam_t * parameter = (WildPokemonParam_t *)param;
+	GameData_t * gameData = parameter->gameData;
+	while (gameData->isRunning && parameter->isRunning){
+		sleep(20);
+		if(!parameter->isRunning || !gameData->isRunning){
+			break;
+		}
+		if(gameData->jumlahLullabyActive) continue;
+		int random = generateRandom(gameData->sharedPokemon->escapeRateB);
+		if(random < gameData->sharedPokemon->escapeRateA){
+			gameData->sharedPokemon->isLocked = 0;
+			break;
+		}
+	}
+}
+```
+Thread ini akan berjalan, saat sedang dalam capture mode.
+- Untuk setiap 20 detik, akan dirandomize sesuai dengan escapeRateA dan B. dimana kemungkinan escapeRateA/escapeRateB pokemon akan kabur.  Kecuali jika ada lullaby Powder yang aktif.
+
+#### lullaby Thread
+```
+void * lullabyThread(void * param){
+	GameData_t * gameData = (GameData_t *)param;
+	gameData->jumlahLullabyActive++;
+	sleep(10);
+	gameData->jumlahLullabyActive--;
+}
+```
+Thread ini akan berjalan, saat player menggunakan lullaby powder saat capture mode.
+- Menambah jumlah lullaby yang aktif, setelah 10 s, maka kurangi yang aktif. Alias lullaby powder hanya aktif selama 10 detik.
+
+#### tamePokemon function
+```
+Pokemon_t * tamePokemon(WildPokemon_t * wildPokemon){
+	Pokemon_t * newPokemon = malloc(sizeof(Pokemon_t));
+	memset(newPokemon, 0, sizeof(newPokemon));
+	strcpy(newPokemon->name, wildPokemon->name);
+	newPokemon->type = wildPokemon->type;
+	newPokemon->ap = 100;
+	newPokemon->price = wildPokemon->price;
+	return newPokemon;
+}
+```
+Fungsi ini akan berjalan saat ada pokemon yang ditangkap, untuk mengkonversi dari ```wildPokemon_t``` ke ```Pokemon_t```.
+
+#### addApPokemon function
+```
+void addApPokemon(Pokemon_t * pokemon, int ap){
+	pokemon->ap += ap;
+}
+```
+Fungsi ini akan menambahkan Affective Point dengan ap.
+
+### Pokezone
+
+
 ## 2. Soal 2
 ## 3. Soal 3
 ## 4. Soal 4

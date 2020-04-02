@@ -148,9 +148,6 @@ int generateRandom(int max){
 
 void addApPokemon(Pokemon_t * pokemon, int ap){
 	pokemon->ap += ap;
-	if(pokemon->ap < 100){
-		pokemon->ap = 100;
-	}
 }
 
 int addPokemon(PokeBag_t * pokeBag, Pokemon_t * pokemon){
