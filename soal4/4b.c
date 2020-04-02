@@ -17,9 +17,9 @@ unsigned long long fact(unsigned long long n){
 void *factorial_(void *arg){
     for (int j = 0; j < 4; j++)  {
         for (int k = 0; k < 5; k++) {  
-            printf("%llu\t", arr[j][k]);
-            printf("%llu\t\n", fact(arr[j][k]));
+            printf("%llu\t\t\t", fact(arr[j][k]));
         }
+        printf("\n");
     }
     pthread_exit(0);
 

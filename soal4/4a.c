@@ -74,23 +74,23 @@ int main(void)
 
     matA[0][0] = 1;
 	matA[0][1] = 2;
-	matA[1][0] = 3;
-	matA[1][1] = 4;
-	matA[2][0] = 5;
-	matA[2][1] = 6;
-	matA[3][0] = 7;
-	matA[3][1] = 2;
+	matA[1][0] = 2;
+	matA[1][1] = 1;
+	matA[2][0] = 2;
+	matA[2][1] = 1;
+	matA[3][0] = 2;
+	matA[3][1] = 1;
 
-	matB[0][0] = 3;
-	matB[0][1] = 4;
-	matB[0][2] = 5;
-	matB[0][3] = 6;
+	matB[0][0] = 2;
+	matB[0][1] = 1;
+	matB[0][2] = 3;
+	matB[0][3] = 2;
 	matB[0][4] = 1;
-	matB[1][0] = 5;
-	matB[1][1] = 4;
-	matB[1][2] = 3;
-	matB[1][3] = 2;
-	matB[1][4] = 1;
+	matB[1][0] = 2;
+	matB[1][1] = 3;
+	matB[1][2] = 2;
+	matB[1][3] = 1;
+	matB[1][4] = 2;
 
 	// pthread_create(&t1, NULL, addA, (void*)(p1)); 
     // pthread_join(t1, NULL);  
