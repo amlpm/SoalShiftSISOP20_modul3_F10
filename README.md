@@ -802,7 +802,264 @@ Thread ini berfungsi untuk restock shop.
 
 ## 2. Soal 2
 
+### tapserver
 
+#### struct ServerData
+```
+typedef struct ServerData_s{
+	int isRunning;
+	int server_fd;
+	struct sockaddr_in address;
+	AkunData_t * akunData;
+	int addrlen;
+	Queue_t * queue;
+}ServerData_t;
+```
+struct ServerData digunakan untuk menyimpan data yang akan digunakan di semua thread.
+- ```isRunning``` adalah integer untuk mengetahui status program.
+- ```server_fd```, ```address```, dan ```addrlen``` adalah variabel server socket.
+- ```akunData``` digunakan untuk menyimpan akun yang sudah terregister.
+- ```queue``` digunakan untuk player yang mau find match.
+
+#### struct AkunData dan Akun
+```
+typedef struct Akun_s{
+	char username[20];
+	char password[20];
+}Akun_t;
+
+typedef struct AkunData_s{
+	int count;
+	Akun_t * akun[20];
+}AkunData_t;
+```
+Akun Data menyimpan semua akun yang sudah terregister. Sedangkan Akun menyimpan username dan password setiap user.
+
+#### Queue
+```
+typedef struct Node_s{
+	struct Node_s * next;
+	Player_t * value;
+}Node_t;c
+
+typedef struct Queue_s{
+	Node_t * head;
+	Node_t * tail;
+	int count;
+}Queue_t;
+
+void enqueue(Queue_t * queue, Player_t * player){
+	Node_t * newNode = malloc(sizeof(Node_t));
+	newNode->value = player;
+	if(queue->count == 0){
+		queue->head = newNode;
+	}else{
+		queue->tail->next = newNode;
+	}
+	queue->tail = newNode;
+	queue->count++;
+}
+
+Player_t * dequeue(Queue_t * queue){
+	if(queue->count == 0)return NULL;
+	Node_t * node = queue->head;
+	queue->head = node->next;
+	queue->count--;
+	free(node);
+	return node->value;
+}
+```
+Queue ini menyimpan player. Digunakan untuk sinkronisasi find match player.
+
+#### struct Player
+```
+typedef struct Player_s {
+	int socket;
+	int health;
+	struct Player_s * otherPlayer;
+}Player_t;
+```
+Struct ini akan dipunyai untuk setiap client. Player menyimpan socket, health, dan pointer ke musuh. Dimana di awal otherPlayer adalah NULL. Lalu setelah mendapat match akan mempunyai pointer ke Player lainnya.
+
+#### addAkun function
+```
+void addAkun(AkunData_t * akunData, const char * user, const char * pass){
+	FILE * akunFile = fopen("akun.txt", "a");
+	fprintf(akunFile, "%s\n%s\n", user, pass);
+	fclose(akunFile);
+	int count = akunData->count;
+	Akun_t * akun = createAkun(user, pass);
+	akunData->akun[count++] = akun;
+	akunData->count = count;
+}
+```
+Fungsi ini menambahkan akun baru keA AkunData.
+
+#### createAkun function
+```
+Akun_t * createAkun(const char * user, const char * pass){
+	Akun_t * akun = malloc(sizeof(Akun_t));
+	strcpy(akun->username, user);
+	strcpy(akun->password, pass);
+	return akun;
+}
+```
+Fungsi ini membuat akun baru sesuai input user dan password.
+
+#### sendString function
+```
+void sendString(Player_t * connectionData, const char * str){
+	char buffer[1024];
+	memset(buffer, 0, sizeof(buffer));
+	strncpy(buffer, str, sizeof(buffer));
+	if(send(connectionData->socket, buffer, sizeof(buffer), 0) < 0){
+		printf("Can't send string\n");
+		exit(EXIT_FAILURE);
+	}
+}
+```
+Fungsi ini mengirim string ke socket yang ada di struct Player_t.
+
+#### receiveString function
+```
+int receiveString(Player_t * connectionData, char * dest, size_t size){
+	char buffer[1024];
+	memset(buffer, 0, sizeof(0));
+	int val = read(connectionData->socket, buffer, sizeof(buffer));
+	if(val < 0){
+		printf("failed to receive string\n");
+		exit(EXIT_FAILURE);
+	}
+	strncpy(dest, buffer, size);
+	return val;
+}
+```
+Fungsi ini menerima string dari socket yang ada di struct Player_t lalu memasukkannya di string dest.
+
+#### listen thread
+```
+void * listenThread(void * param){
+	ServerData_t * serverData = (ServerData_t*)param;
+	int * server_fd = &serverData->server_fd;
+	struct sockaddr_in * address = &serverData->address;
+	int * addrlen = &serverData->addrlen;
+	*addrlen = sizeof(*address);
+	pthread_t t;
+
+	while(serverData->isRunning){
+
+		if (listen(*server_fd, 3) < 0) {
+			perror("listen");
+			exit(EXIT_FAILURE);
+		}
+
+		ThreadParam_t * param = malloc(sizeof(ThreadParam_t));
+		param->serverData = serverData;
+
+		Player_t * player = malloc(sizeof(Player_t));
+		memset(player, 0, sizeof(player));
+		param->player = player;
+		player->health = 100;
+
+		if ((player->socket = accept(*server_fd, (struct sockaddr *)address, (socklen_t*)addrlen))<0) {
+			perror("accept");
+			exit(EXIT_FAILURE);
+		}
+
+		if(pthread_create(&t, NULL, &playerThread, (void *)param) < 0){
+			perror("thread fail");
+			exit(EXIT_FAILURE);
+		}
+	}
+}
+```
+Thread ini berfungsi untuk menerima client baru. Dimana setiap client akan dibuatkan thread masing - masing.
+
+#### pair thread
+```
+void * pairThread(void * param){
+	ServerData_t * serverData = (ServerData_t *)param;
+	while(serverData->isRunning){
+		if(serverData->queue->count >= 2){
+			Player_t * a = dequeue(serverData->queue);
+			Player_t * b = dequeue(serverData->queue);
+			a->otherPlayer = b;
+			b->otherPlayer = a;
+		}
+	}
+}
+```
+Thread ini berfungsi untuk memasangkan player yang sedang find match. Jika player ingin find match, maka akan enqueue ke queue. Jika ada lebih dari 2 player yang find match, maka 2 player tadi akan dipasangkan.
+
+#### player thread
+```
+void * playerThread(void * param){
+
+	ThreadParam_t * p = (ThreadParam_t *)param;
+	ServerData_t * serverData = p->serverData;
+	Player_t * player = p->player;
+
+    char buffer[1024];
+	char * win = "win";
+
+	while(serverData->isRunning){
+		int val = receiveString(player, buffer, sizeof(buffer));
+		if(val == 0)break;
+		if(strcmp(buffer, "register") == 0){
+			char username[20];
+			char password[20];
+			receiveString(player, username, sizeof(username));
+			receiveString(player, password, sizeof(password));
+			addAkun(serverData->akunData, username, password);
+		}else if(strcmp(buffer, "login") == 0){
+			char username[20];
+			char password[20];
+			receiveString(player, username, sizeof(username));
+			receiveString(player, password, sizeof(password));
+			int login = 0;
+			for(int i = 0; i < serverData->akunData->count; i++){
+				if(strcmp(username, serverData->akunData->akun[i]->username) == 0 && strcmp(password, serverData->akunData->akun[i]->password) == 0){
+					login = 1;
+					break;
+				}
+			}
+			if(login){
+				sendString(player, "success");
+				printf("Auth success\n");
+				fflush(stdout);
+			}else{
+				sendString(player, "failed");
+				printf("Auth failed\n");
+				fflush(stdout);
+			}
+		}else if(strcmp(buffer, "find") == 0){
+			enqueue(serverData->queue, player);
+			while(player->otherPlayer == NULL){
+				sleep(1);
+			}
+			sendString(player, "player found");
+		}else if(strcmp(buffer, "fire") == 0){
+			player->otherPlayer->health -= 10;
+			char buffer[10];
+			snprintf(buffer, sizeof(buffer), "%d", player->otherPlayer->health);
+			sendString(player->otherPlayer, buffer);
+			if(player->otherPlayer->health == 0){
+				sendString(player, win);
+			}
+		}
+	}
+	
+}
+```
+Thread ini akan berjalan untuk setiap client. Berfungsi untuk mendengarkan inputan player dan memproses data.
+- jika player ingin register, akan menerima string ```"register"```. Memanggil fungsi ```addAkun```.
+- Jika player ingin login, akan menerima string ```"register"```. Mengcompare dengan struct ```AkunData``` yang ada di ```ServerData```.
+- Jika player ingin find, akan menerima string ```"find"```. Enqueue struct ```Player``` ke ```queue``` yang ada di ```ServerData```.
+- Jika player menembak, akan menerima string ```"fire"```. Player sudah mempunyai pasangan, jadi ```otherPlayer``` di struct ```Player``` tidak lagi ```NULL```. maka nyawa ```otherPlayer``` dikurangi 10. Lalu kirim pesan tersebut ke ```otherPlayer```.
+- Jika nyawa ```otherPlayer``` atau nyawa sendiri 0 maka loop selesai.
+- Jika nyawa ```Player``` tidak 0 saat keluar loop maka ```Player``` menang. Maka kirim pesan ```"win"```.
+
+### tapplayer
 
 ## 3. Soal 3
 

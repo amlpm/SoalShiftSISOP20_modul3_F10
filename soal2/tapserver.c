@@ -194,6 +194,7 @@ void * playerThread(void * param){
 	Player_t * player = p->player;
 
     char buffer[1024];
+	char * win = "win";
 
 	while(serverData->isRunning){
 		int val = receiveString(player, buffer, sizeof(buffer));
@@ -237,15 +238,11 @@ void * playerThread(void * param){
 			snprintf(buffer, sizeof(buffer), "%d", player->otherPlayer->health);
 			sendString(player->otherPlayer, buffer);
 			if(player->otherPlayer->health == 0){
-				break;
+				sendString(player, win);
 			}
 		}
 	}
-	char * win = "win";
-	if(player->health != 0){
-		sendString(player, win);
-	}
-
+	
 }
 
 void * pairThread(void * param){
