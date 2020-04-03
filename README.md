@@ -481,6 +481,328 @@ Fungsi ini akan dieksekusi saat gameState adalah Capture Mode.
 - Untuk pilihan kedua, yaitu menggunakan lullaby powder. Untuk menggunakannya, akan dijalankan thread ```lullabyThread```.
 - Untuk pilihan ketiga, yaitu melepas pokemon. ```isLocked``` di set 0 dan mengganti state dengan fungsi ```changeState```.
 
+#### cariPokemon Thread
+```
+void * cariPokemonThread(void * param){
+	GameData_t * gameData = (GameData_t *) param;
+	while(gameData->cariPokemon){
+		if(generateRandom(10) <= 5){
+			gameData->cariPokemon = 0;
+			changeState(&gameData->gameState, CAPTURE_MODE);
+			break;
+		}
+		sleep(10);
+	}
+}
+```
+Thread ini akan berjalan, saat pemain menyalakan cariPokemon.
+- Thread akan loopin sampai cariPokemon bernilai 0
+- untuk setiap 10 detik, akan ada chance 6/10 mendapatkan pokemon. Saat mendapatkan pokemon, cariPokemon akan dinonaktifkan. Lalu state akan diganti ke capture mode.
+
+#### wildPokemon Thread
+```
+void * wildpokemonThread(void * param){
+	WildPokemonParam_t * parameter = (WildPokemonParam_t *)param;
+	GameData_t * gameData = parameter->gameData;
+	while (gameData->isRunning && parameter->isRunning){
+		sleep(20);
+		if(!parameter->isRunning || !gameData->isRunning){
+			break;
+		}
+		if(gameData->jumlahLullabyActive) continue;
+		int random = generateRandom(gameData->sharedPokemon->escapeRateB);
+		if(random < gameData->sharedPokemon->escapeRateA){
+			gameData->sharedPokemon->isLocked = 0;
+			break;
+		}
+	}
+}
+```
+Thread ini akan berjalan, saat sedang dalam capture mode.
+- Untuk setiap 20 detik, akan dirandomize sesuai dengan escapeRateA dan B. dimana kemungkinan escapeRateA/escapeRateB pokemon akan kabur.  Kecuali jika ada lullaby Powder yang aktif.
+
+#### lullaby Thread
+```
+void * lullabyThread(void * param){
+	GameData_t * gameData = (GameData_t *)param;
+	gameData->jumlahLullabyActive++;
+	sleep(10);
+	gameData->jumlahLullabyActive--;
+}
+```
+Thread ini akan berjalan, saat player menggunakan lullaby powder saat capture mode.
+- Menambah jumlah lullaby yang aktif, setelah 10 s, maka kurangi yang aktif. Alias lullaby powder hanya aktif selama 10 detik.
+
+#### tamePokemon function
+```
+Pokemon_t * tamePokemon(WildPokemon_t * wildPokemon){
+	Pokemon_t * newPokemon = malloc(sizeof(Pokemon_t));
+	memset(newPokemon, 0, sizeof(newPokemon));
+	strcpy(newPokemon->name, wildPokemon->name);
+	newPokemon->type = wildPokemon->type;
+	newPokemon->ap = 100;
+	newPokemon->price = wildPokemon->price;
+	return newPokemon;
+}
+```
+Fungsi ini akan berjalan saat ada pokemon yang ditangkap, untuk mengkonversi dari ```wildPokemon_t``` ke ```Pokemon_t```.
+
+#### addApPokemon function
+```
+void addApPokemon(Pokemon_t * pokemon, int ap){
+	pokemon->ap += ap;
+}
+```
+Fungsi ini akan menambahkan Affective Point dengan ap.
+
+### Pokezone
+
+#### GameData Struct
+```
+typedef struct GameData_s{
+	int isRunning;
+	WildPokemon_t * sharedPokemon;
+	Shop_t * sharedShop;
+}GameData_t;
+```
+Struct game data berisi data-data yang banyak digunakan oleh fungsi lainnya.
+- variabel isRunning digunakan untuk mengatur jalannya program, jika program ingin mematikan dirinya, dapat mengisi isRunning = 0.
+
+#### Struct Wild Pokemon
+```
+typedef struct WildPokemon_s{
+	int isLocked;
+	char name[20];
+	int type;
+	int price;
+	int capRateA;
+	int capRateB;
+	int escapeRateA;
+	int escapeRateB;
+}WildPokemon_t;
+```
+Struct Wild Pokemon digunakan untuk mengetahui data pokemon yang belum tertangkap atau pokemon yang berada di capture mode.
+
+#### Struct Shop
+```
+typedef struct Shop_s{
+	int isLocked;
+	int lullabyPowder;
+	int lullabyPowderPrice;
+	int pokeball;
+	int pokeballPrice;
+	int berry;
+	int berryPrice;
+}Shop_t;
+```
+Struct Shop digunakan untuk mengetahui data shop yang bisa dibeli oleh player.
+
+#### generateRandom function
+```
+int generateRandom(int max){
+	return rand()%max;
+}
+```
+Fungsi sederhana untuk mengambil random dari 0 sampai max-1.
+
+#### main function
+```
+int main(int argc, const char * argv[]){
+	srand(time(0));
+
+	GameData_t * gameData = malloc(sizeof(GameData_t));
+	memset(gameData, 0, sizeof(GameData_t));
+	gameData->isRunning = 1;
+
+	//shared memory
+	key_t key = 1111;
+	WildPokemon_t * sharedPokemon;
+	int shmid =  shmget(key, sizeof(WildPokemon_t), IPC_CREAT | 0666);
+	sharedPokemon = shmat(shmid, NULL, 0);
+	memset(sharedPokemon, 0, sizeof(sharedPokemon));
+
+	gameData->sharedPokemon = sharedPokemon;
+
+	key_t key2 = 2222;
+	Shop_t * sharedShop;
+	int shmid2 =  shmget(key2, sizeof(Shop_t), IPC_CREAT | 0666);
+	sharedShop = shmat(shmid2, NULL, 0);
+	memset(sharedShop, 0, sizeof(sharedShop));
+
+	gameData->sharedShop = sharedShop;
+	
+	pthread_t pokemonThread;
+
+	if(pthread_create(&pokemonThread, NULL, &randomizePokemonThread, (void*)gameData ) < 0){
+		printf("can't create thread\n");
+		exit(EXIT_FAILURE);
+	}
+
+	pthread_t shop;
+
+	if(pthread_create(&shop, NULL, &shopThread, (void*)gameData ) < 0){
+		printf("can't create thread\n");
+		exit(EXIT_FAILURE);
+	}
+	printf("--POKEZONE--\n");
+	printf("1. Exit\n");
+	printf("Choice : ");
+	int choice;
+	scanf("%d", &choice);
+	pid_t ppp = getpid();
+	if(choice == 1){
+		pid_t id = fork();
+		if(!id){
+			FILE * pidProcess = popen("pidof soal1_traizone", "r");
+			int pida = 0;
+			while(fscanf(pidProcess, "%d", &pida) != EOF){
+				id = fork();
+				if(!id){
+					char pid[10];
+					snprintf(pid, sizeof(pid), "%d", pida);
+					char * argv[] = {"kill", "-9", pid, NULL};
+					execv("/bin/kill", argv);
+				}
+			}
+			char pid[10];
+			snprintf(pid, sizeof(pid), "%d", ppp);
+			char * argv[] = {"kill", "-9", pid, NULL};
+			execv("/bin/kill", argv);
+		}
+	}
+
+	pthread_join(pokemonThread, NULL);
+	pthread_join(shop, NULL);
+
+	shmdt(sharedPokemon);
+    shmctl(shmid, IPC_RMID, NULL);
+
+	shmdt(sharedShop);
+    shmctl(shmid2, IPC_RMID, NULL);
+	return 0;
+}
+```
+Fungsi ini adalah fungsi awal.
+- ```srand(time(0))``` digunakan untuk setting seed randomiser.
+- Mengalokasikan memori untuk GameData, Shop dan WildPokemon.
+- Shop dan WildPokemon menggunakan sharedMemory
+- Menampilkan list aksi
+- Untuk pilihan 1, yaitu keluar. Maka dengan fork-exec membunuh process sendiri dan hasil pidof soal1_traizone.
+
+#### randomizePokemon Thread
+```
+void * randomizePokemonThread(void * param){
+	GameData_t * gameData = (GameData_t *)param;
+	WildPokemon_t * sharedPokemon = gameData->sharedPokemon;
+	char normalName[5][20];
+	strcpy(normalName[0], "Bulbasaur");
+	strcpy(normalName[1], "Charmander");
+	strcpy(normalName[2], "Squirtle");
+	strcpy(normalName[3], "Rattata");
+	strcpy(normalName[4], "Caterpie");
+
+	char rareName[5][20];
+	strcpy(rareName[0], "Pikachu");
+	strcpy(rareName[1], "Eevee");
+	strcpy(rareName[2], "Jigglypuff");
+	strcpy(rareName[3], "Snorlax");
+	strcpy(rareName[4], "Dragonite");
+
+	char legendaryName[5][20];
+	strcpy(legendaryName[0], "Mew");
+	strcpy(legendaryName[1], "Mewtwo");
+	strcpy(legendaryName[2], "Moltres");
+	strcpy(legendaryName[3], "Zapdos");
+	strcpy(legendaryName[4], "Articuno");
+
+	while(gameData->isRunning){
+		if(sharedPokemon->isLocked){
+			continue;
+		}
+		int random = generateRandom(20);
+		if(random <= 15){
+			//normal
+			random = generateRandom(5);
+			strcpy(sharedPokemon->name, normalName[random]);
+			sharedPokemon->price = 80;
+			sharedPokemon->capRateA = 7;
+			sharedPokemon->capRateB = 10;
+			sharedPokemon->escapeRateA = 1;
+			sharedPokemon->escapeRateB = 20;
+			sharedPokemon->type = 0;
+		}else if(random <= 18){
+			//rare
+			random = generateRandom(5);
+			strcpy(sharedPokemon->name, rareName[random]);
+			sharedPokemon->price = 100;
+			sharedPokemon->capRateA = 5;
+			sharedPokemon->capRateB = 10;
+			sharedPokemon->escapeRateA = 1;
+			sharedPokemon->escapeRateB = 10;
+			sharedPokemon->type = 1;
+		}else{
+			//legendary
+			random = generateRandom(5);
+			strcpy(sharedPokemon->name, legendaryName[random]);
+			sharedPokemon->price = 200;
+			sharedPokemon->capRateA = 3;
+			sharedPokemon->capRateB = 10;
+			sharedPokemon->escapeRateA = 1;
+			sharedPokemon->escapeRateB = 5;
+			sharedPokemon->type = 2;
+		}
+		random = generateRandom(8000);
+		if(random == 0){
+			sharedPokemon->capRateA-= 2;
+			sharedPokemon->escapeRateA+=1;
+			sharedPokemon->price+=5000;
+		}
+		sleep(1);
+	}
+}
+```
+Thread ini berfungsi untuk merandomize pokemon yang akan ditangkap.
+- jika pokemon sedang isLocked, artinya sharedPokemon sedang dibaca. Jadi tidak diubah.
+- Untuk chance 80 persen akan mendapatkan normal, dan pokemon di set sesuai tabel.
+- Untuk chance 15 persen akan mendapatkan normal, dan pokemon di set sesuai tabel.
+- Untuk chance 5 persen akan mendapatkan normal, dan pokemon di set sesuai tabel.
+- Setelah set pokemon, dichance 1 dari 8000, data pokemon ditambah atau dikurang sesuai soal.
+
+#### shop Thread
+```
+void * shopThread(void * param){
+	GameData_t * gameData = (GameData_t *)param;
+	gameData->sharedShop->lullabyPowder = 100;
+	gameData->sharedShop->lullabyPowderPrice = 60;
+	gameData->sharedShop->berry = 100;
+	gameData->sharedShop->berryPrice = 5;
+	gameData->sharedShop->pokeball = 100;
+	gameData->sharedShop->pokeballPrice = 15;
+	fflush(stdout);
+	while(gameData->isRunning){
+		sleep(10);
+		gameData->sharedShop->berry += 10;
+		if(gameData->sharedShop->berry > 200){
+			gameData->sharedShop->berry = 200;
+		}
+		gameData->sharedShop->pokeball += 10;
+		if(gameData->sharedShop->pokeball > 200){
+			gameData->sharedShop->pokeball = 200;
+		}
+		gameData->sharedShop->lullabyPowder += 10;
+		if(gameData->sharedShop->lullabyPowder > 200){
+			gameData->sharedShop->lullabyPowder = 200;
+		}
+		fflush(stdout);
+	}
+}
+```
+Thread ini berfungsi untuk restock shop.
+- Menambah setiap item dengan 10, dan jika melebihi 200 di set 200.
+
 ## 2. Soal 2
+
+
+
 ## 3. Soal 3
 ## 4. Soal 4
