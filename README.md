@@ -1062,8 +1062,118 @@ Thread ini akan berjalan untuk setiap client. Berfungsi untuk mendengarkan input
 ### tapplayer
 
 ## 3. Soal 3
+```
+const char *get_filename_ext(const char *filename) {
+    const char *dot = strrchr(filename, '.');
+    if(!dot || dot == filename) return "";
+    return dot + 1;
+}
+``` 
+- Fungsi untuk mengembalikan ekstensi dari file, di hitung mulai . (misalkan Archive.ZIP, maka return ekstensinya berupa ZIP)
+- Apabila tidak menemukan ., maka return kosong (tidak ada ekstensinya)
 
+```
+int isFileExists(char *path)
+{
+    printf("%s\n", path);
+    char f[100];
+    snprintf(f, sizeof(f), "/home/amelia/soal3/soal3/%s", path);
+    DIR *directory = opendir("/home/amelia/soal3/soal3"); //specify the directory name
+    struct dirent * direntp;
+    int i = 0;
+    while((direntp = readdir(directory)) != NULL){
+        struct stat   buffer;   
+        int exist = stat(f, &buffer);
+        if(exist == 0) {
+            printf("ada\n");
+            return 1;
+        }
+        else {
+            printf("Tidak ada\n");
+            return 0;
+        }
+    }
+}
+```
+- Fungsi untuk mengecek apakah file yang diinput ada atau tidak pa adirektori menggunakan dirent.h
+- Awalnya membuka directory dulu menggunakan ```DIR *directory = opendir("/home/amelia/soal3/soal3");``` dan membaca isinya
+- Menggunakan fungsi stat () untuk membuat daftar properti file yang diidentifikasi oleh path ```int exist = stat(f, &buffer);```
+- Apabila exist = 0, maka file ada dan return 1. Sebaliknya, apabila file tidak ada, maka return 0
 
+```
+void* isDirExists(void *arg) {
+    struct stat st = {0};
+    char dirName[100];
+    snprintf(dirName, sizeof(dirName), "/home/amelia/amelia/%s", get_filename_ext(fileName));
+    if (stat(dirName, &st) == -1)
+    {
+        mkdir(dirName, 0700);
+    }
+}
+```
+- Fungsi untuk mengecek apakah direktori (yang bernama sesuai ekstensi file) ada dan me
+- Sama seperti isFileExist, menggunakan dirent.h
+- Awalnya membuka directory dulu menggunakan ```DIR *directory = opendir("/home/amelia/soal3/soal3");``` dan membaca isinya
+- Menggunakan fungsi stat () untuk membuat daftar properti file yang diidentifikasi oleh path ```stat(ext, &st) == -1```
+- Apabila tidak ada file yang ter identifikasi, maka artinya direktori tidak ada dan otomatis akan membuat direktori sesuai ekstensi
+
+```
+void* moveFile (void *arg) {
+    FILE *fptr1, *fptr2; 
+    char file[100], dest[100], c; 
+  
+    // Open one file for reading 
+    snprintf(file, sizeof(file), "/home/amelia/soal3/soal3/%s", fileName);
+    fptr1 = fopen(file, "r"); 
+    if (fptr1 == NULL) 
+    { 
+        printf("Cannot open file %s \n", file); 
+    }
+  
+    // Open another file for writing 
+    snprintf(dest, sizeof(dest), "/home/amelia/amelia/%s/%s", get_filename_ext(fileName), fileName);
+    fptr2 = fopen(dest, "w"); 
+
+    while ((c = fgetc(fptr1)) != EOF) fputc(c, fptr2);
+    
+    remove(file);
+    printf("Contents copied to %s\n", dest); 
+}
+```
+- Fungsi move file untuk memindahkan file di direktori 'soal3' ke direktori sekarang
+- Menggunakan fopen fclose untuk membuka file dan fputc untuk menulis isi dari file
+- Setelah file berhasil di pindah, gunakan remove(file) untuk menghapus file di direktori 'kategori'
+- snprintf untuk menggabungkan array buffer yang nantinya dipakai untuk path pada file dan destination. ```snprintf(file, sizeof(file), "/home/amelia/soal3/soal3/%s", fileName);``` dan ```snprintf(dest, sizeof(dest), "/home/amelia/amelia/%s/%s", get_filename_ext(fileName), fileName);```
+
+```
+    printf("Masukkan Opsi : ");
+    scanf("%s", x);
+    strcpy(a, "-f");
+    strcpy(b, "-d");
+```
+- Untuk memasukkan opsi command -f dan -d, * tidak perlu karena bukan merupakan string.
+- -f dan -d dimasukkan ke string menggunakan ```strcpy(a, "-f");``` dan ```strcpy(b, "-d");```
+
+```
+if(strcmp(x, a)==0) {
+	printf("Masukkan nama file : ");
+	scanf("%s", fileName);
+    if(isFileExists(fileName)){
+        int* p;
+        int * p1; 
+        int x, y;
+
+        pthread_create(&threads[0], NULL, isDirExists, (void*)(p)); 
+        pthread_create(&threads[1], NULL, moveFile, (void*)(p)); 
+
+        pthread_join(threads[0], NULL);
+        pthread_join(threads[1], NULL);
+    } 
+}
+```
+- Untuk opsi -f. Menggunakan strcmp untuk membandingkan input command dengan -f / -d
+- Masukkan nama file, lalu cek apakah nama file ada di direktori menggunakan fungsi ```isFileExists()```
+- Menggunakan thread untuk membuat direktori dan thread untuk memindahkan file
 
 ## 4. Soal 4
 
@@ -1144,7 +1254,7 @@ printf("Multiplication of A and B : \n");
 ```
 - result matriks di masukkan ke matriks C, dan di print
 
-###4b
+### 4b
 Untuk shared memory memory nya
 ```
     key_t key = 1234;
@@ -1208,7 +1318,7 @@ printf("\nHasil penambahan matriks : \n");
 ```
 - Print arr yang tadi berisi hasil penambahan
 
-###4c
+### 4c
 ```
 int main () {
 int main() 

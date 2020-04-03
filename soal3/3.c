@@ -13,7 +13,6 @@
 #include <errno.h>
 #include <sys/stat.h>
 
-const char * ext;
 char fileName[100];
 
 const char *get_filename_ext(const char *filename) {
@@ -27,7 +26,7 @@ int isFileExists(char *path)
     printf("%s\n", path);
     char f[100];
     snprintf(f, sizeof(f), "/home/amelia/soal3/soal3/%s", path);
-    DIR *directory = opendir("/home/amelia/soal3/soal3"); //specify the directory name
+    DIR *directory = opendir("/home/amelia/soal3/soal3");
     struct dirent * direntp;
     int i = 0;
     while((direntp = readdir(directory)) != NULL){
@@ -47,12 +46,14 @@ int isFileExists(char *path)
 void* isDirExists(void *arg) {
     struct stat st = {0};
     char dirName[100];
-    snprintf(dirName, sizeof(dirName), "./%s", get_filename_ext(fileName));
-    if (stat(ext, &st) == -1)
+    snprintf(dirName, sizeof(dirName), "/home/amelia/amelia/%s", get_filename_ext(fileName));
+    if (stat(dirName, &st) == -1)
     {
-        mkdir(ext, 0700);
+        mkdir(dirName, 0700);
     }
+}
 
+void* moveFile (void *arg) {
     FILE *fptr1, *fptr2; 
     char file[100], dest[100], c; 
   
@@ -67,17 +68,11 @@ void* isDirExists(void *arg) {
     // Open another file for writing 
     snprintf(dest, sizeof(dest), "/home/amelia/amelia/%s/%s", get_filename_ext(fileName), fileName);
     fptr2 = fopen(dest, "w"); 
-    if (fptr2 == NULL) 
-    { 
-        printf("Cannot read file %s \n", dest); 
-    } 
 
     while ((c = fgetc(fptr1)) != EOF) fputc(c, fptr2);
     
     remove(file);
-    printf("\nContents copied to %s", dest); 
-
-    fclose(fptr2); 
+    printf("Contents copied to %s\n", dest); 
 }
 
 int main (void) {
@@ -89,6 +84,7 @@ int main (void) {
     char *res;
     DIR *directory;
     struct dirent *de;
+    pthread_t threads[100]; 
 
     printf("Masukkan Opsi : ");
     scanf("%s", x);
@@ -102,14 +98,39 @@ int main (void) {
                 printf("Masukkan nama file : ");
                 scanf("%s", fileName);
                 if(isFileExists(fileName)){
-                    pthread_t threads[2]; 
                     int* p;
                     int * p1; 
                     int x, y;
 
                     pthread_create(&threads[0], NULL, isDirExists, (void*)(p)); 
+                    pthread_create(&threads[1], NULL, moveFile, (void*)(p)); 
+
                     pthread_join(threads[0], NULL);
+                    pthread_join(threads[1], NULL);
                 } 
+            }
+            else if (strcmp(x, "*") == 0) {
+                int file_count = 0;
+
+                directory = opendir("/home/amelia/soal3/soal3"); /* There should be error handling after this */
+                while ((de = readdir(directory)) != NULL) {
+                    if (de->d_type == DT_REG) { /* If the dentry is a regular file */
+                        file_count++;
+                    }
+                }
+                printf("%d\n", file_count);
+                int arr[100];
+                for (int i = 0; i < file_count; i++) {
+                    fileName[i] = de->d_name; 
+                }
+                for (int i = 0; i < file_count; i++) { 
+                    int* p; 
+                    pthread_create(&threads[i], NULL, isDirExists, (void*)(p)); 
+                } 
+                for (int i = 0; i < file_count; i++)  pthread_join(threads[i], NULL);  
+            }
+            else if (strcmp(x, b)){
+
             }
         }
     }
