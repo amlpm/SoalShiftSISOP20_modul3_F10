@@ -1744,20 +1744,19 @@ printf("Perkalian Matriks A dan Matriks B : \n");
 
 Deklarasi thread untuk penambahan elemen masing" matriks
 ```
-    for (int i = 0; i < count; i++) { 
-        int* p; 
-        pthread_create(&threads[i], NULL, plus, (void*)(p)); 
-    } 
-  
-    for (int i = 0; i < count; i++)  
-        pthread_join(threads[i], NULL);     
+    pthread_t threads[2]; 
+    int* p;
+
+    pthread_create(&threads[0], NULL, plus, (void*)(p));
+    pthread_join(threads[0], NULL); 
 ```
-- Masing - masing thread sejumlah lelemen hasil perkalian matriks (ada 20 thread, karena 4 x 5 = 20)
-- Join semua thread
+- membuat thread untuk menghitung penambahan elemen matriks
+- Join thread
 
 Fungsi untuk menambahkan masing - masing elemen hasil perkalian matriks
 ```
 void *plus(void *arg) {
+    printf("\nHasil Penambahan Matriks : \n");
     for (int i = 0; i < 4; i++)  {
         for (int j = 0; j < 5; j++) {  
             int n = arr[i][j];
@@ -1765,25 +1764,18 @@ void *plus(void *arg) {
                 res += k;
             }
             arr[i][j] = res;
+            printf("%d\t", res);
+            res = 0;
         }
+        printf("\n");
     }
     pthread_exit(0);
 }
 ```
-- Menghitung penambahan di mulai dari 1 hingga n (elemen arr[i][j]), lalu hasilnya += k dan di masukkan ke arr kembali
+- Menghitung penambahan di mulai dari 1 hingga n (elemen arr[i][j]), lalu hasilnya += k dan di masukkan ke arr kembali. arr kembali di set 0
 - Apabila sudah selesai melakukan operasi, exit thread
+- print hasil penambahan elemen matriks
 
-Untuk print hasil penambahan matriks
-```
-printf("\nHasil penambahan matriks : \n");
-    for (int i = 0; i < rC; i++) { 
-        for (int j = 0; j < cC; j++)  {
-            printf("%d ",arr[i][j]); 
-        }
-        printf("\n");
-    } 
-```
-- Print arr yang tadi berisi hasil penambahan
 
 ### 4c
 ```

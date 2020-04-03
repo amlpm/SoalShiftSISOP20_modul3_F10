@@ -11,6 +11,7 @@ int arr[5][5];
 int res, result;
 
 void *plus(void *arg) {
+    printf("\nHasil Penambahan Matriks : \n");
     for (int i = 0; i < 4; i++)  {
         for (int j = 0; j < 5; j++) {  
             int n = arr[i][j];
@@ -18,7 +19,10 @@ void *plus(void *arg) {
                 res += k;
             }
             arr[i][j] = res;
+            printf("%d\t", res);
+            res = 0;
         }
+        printf("\n");
     }
     pthread_exit(0);
 }
@@ -34,32 +38,18 @@ int main() {
     printf("Perkalian Matriks A dan Matriks B : \n");
     for (int i = 0; i < rC; i++) { 
         for (int j = 0; j < cC; j++)  {
-            printf("%d ", matC[i*cC+j]); 
+            printf("%d\t", matC[i*cC+j]); 
             arr[i][j] = matC[i*cC+j];
         }
         printf("\n");
     } 
 
-    pthread_t threads[30]; 
+    pthread_t threads[2]; 
+    int* p;
 
-    for (int i = 0; i < 20; i++) { 
-        int* p; 
-        pthread_create(&threads[i], NULL, plus, (void*)(p)); 
-    } 
-  
-    for (int i = 0; i < 20; i++)  
-        pthread_join(threads[i], NULL);     
-
-    printf("\nHasil penambahan matriks : \n");
-    for (int i = 0; i < rC; i++) { 
-        for (int j = 0; j < cC; j++)  {
-            printf("%d ",arr[i][j]); 
-        }
-        printf("\n");
-    } 
+    pthread_create(&threads[0], NULL, plus, (void*)(p));
+    pthread_join(threads[0], NULL);
 
     shmdt(matC);
     shmctl(shmid, IPC_RMID, NULL);
-
-    return 0;
 }

@@ -70,6 +70,7 @@ int main(void)
         }
         printf("\n");
     } 
+    sleep(10);
 
     shmdt(matC);
     shmctl(shmid, IPC_RMID, NULL);
