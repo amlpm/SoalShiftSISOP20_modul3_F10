@@ -1,46 +1,57 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <unistd.h>
-#include <dirent.h>
-#include<sys/wait.h> 
-#include <sys/types.h>
+#include<stdio.h> 
+#include<stdlib.h> 
+#include<unistd.h> 
+#include<sys/types.h> 
 #include<string.h> 
+#include<sys/wait.h> 
+#include <dirent.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
-int main () {
-    char *parameter[]={"ls",NULL};
+int main() 
+{ 
+	int p1[2];
 
-    int p[2], count = 0, i;
-    pipe(p);
-    pid_t p1;
+	pid_t p;
+    int count=0; 
+    DIR * directory = opendir("/home/amelia/amel/SoalShiftSISOP20_modul3_F10/soal4");
+    struct dirent * de;
+    struct stat mystat;
 
-    p1 = fork();
+	p = fork(); 
 
-    if (p1 < 0) 
+	if (p < 0) 
 	{ 
-		fprintf(stderr, "fork gagal" ); 
+		fprintf(stderr, "fork Failed" ); 
 		return 1; 
-	}
+	} 
 
-    else if (p1 > 0){ // parent
-        dup2(p[0],0);
-
-        char buffer[500];
-        read(STDIN_FILENO, buffer, 500);
-
-        for(i = 0; buffer[i] != '\0';i++){
-            if (buffer[i] == '\n') count++;
+	// Parent process 
+	else if (p > 0) 
+	{
+        dup2(p1[0],0);
+	    while((de = readdir(directory)) != NULL){
+            if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+            if(de->d_type == DT_REG || de->d_type == DT_DIR){
+                count++;
+            }
         }
         printf("%d\n", count);
-		
-    }
+	} 
 
-    else { // child 
-        dup2(p[1], 1);
-        close(p[0]);
-        execvp("ls", parameter);
-        perror("execvp ls gagal");
-    }
-    close(p[1]);
-}
+	// child process 
+	else
+	{ 
+		dup2(p1[1], 1);
+        close(p1[0]); 
+        char buf[512];
+        directory = opendir("/home/amelia/amel/SoalShiftSISOP20_modul3_F10/soal4");
+        while((de = readdir(directory)) != NULL)
+        {
+            sprintf(buf, "%s/%s", "/home/amelia/amel/SoalShiftSISOP20_modul3_F10/soal4", de->d_name);
+            stat(buf, &mystat);
+            printf("%zu\t %s\n",mystat.st_size, de->d_name);
+        }
+        closedir(directory);
+ 	} 
+} 

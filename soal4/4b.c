@@ -10,19 +10,15 @@
 int arr[5][5];
 int res, result;
 
-
-void *plus(void *arg){
-    printf("\nMatriks Penambahan : \n");
-
+void *plus(void *arg) {
     for (int i = 0; i < 4; i++)  {
         for (int j = 0; j < 5; j++) {  
             int n = arr[i][j];
             for (int k = 1; k <= n; k ++) {
                 res += k;
             }
-            printf("%d ", res);
+            arr[i][j] = res;
         }
-        printf("\n");
     }
     pthread_exit(0);
 }
@@ -44,12 +40,23 @@ int main() {
         printf("\n");
     } 
 
-    pthread_t tid;
-    pthread_attr_t attr;
+    pthread_t threads[30]; 
 
-    pthread_attr_init(&attr);
-    pthread_create(&tid, &attr, plus, NULL);
-    pthread_join(tid, NULL); 
+    for (int i = 0; i < 20; i++) { 
+        int* p; 
+        pthread_create(&threads[i], NULL, plus, (void*)(p)); 
+    } 
+  
+    for (int i = 0; i < 20; i++)  
+        pthread_join(threads[i], NULL);     
+
+    printf("\nHasil penambahan matriks : \n");
+    for (int i = 0; i < rC; i++) { 
+        for (int j = 0; j < cC; j++)  {
+            printf("%d ",arr[i][j]); 
+        }
+        printf("\n");
+    } 
 
     shmdt(matC);
     shmctl(shmid, IPC_RMID, NULL);

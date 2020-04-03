@@ -805,4 +805,206 @@ Thread ini berfungsi untuk restock shop.
 
 
 ## 3. Soal 3
+
+
+
 ## 4. Soal 4
+
+### 4a
+Untuk Shared Memory nya
+```
+    key_t key = 1234;
+    int shmid = shmget(key, sizeof(int)*rC*cC, IPC_CREAT | 0666);
+    matC = (int *)shmat(shmid, NULL, 0);
+```
+- untuk pertukaran data antara program 4a dan 4b 
+
+Deklarasi isi Matriks A dan Matriks B
+```
+    matA[0][0] = 1;
+	matA[0][1] = 2;
+	matA[1][0] = 2;
+	matA[1][1] = 1;
+	matA[2][0] = 2;
+	matA[2][1] = 1;
+	matA[3][0] = 2;
+	matA[3][1] = 1;
+
+	matB[0][0] = 2;
+	matB[0][1] = 1;
+	matB[0][2] = 3;
+	matB[0][3] = 4;
+	matB[0][4] = 1;
+	matB[1][0] = 2;
+	matB[1][1] = 3;
+	matB[1][2] = 2;
+	matB[1][3] = 1;
+	matB[1][4] = 2;
+```
+- di tulis satu per satu elemen matriks nya 
+
+Deklarasi thread nya 
+```
+pthread_t threads[4]; 
+  
+    for (int i = 0; i < 4; i++) { 
+        int* p; 
+        pthread_create(&threads[i], NULL, multi, (void*)(p)); 
+    } 
+  
+    for (int i = 0; i < 4; i++)  
+        pthread_join(threads[i], NULL);   
+```  
+- Dibuat thread sebanyak jumlah perkalian matriks (karena ada 4 x 2 dan 2 x 5, maka ada 4 thread. Masing - masing thread mengoperasikan 1 baris 1 kolom)
+- Masing - masing thread di join
+
+Fungsi Perkalian Matriks nya
+```
+void* multi(void* arg) 
+{ 
+    int core = step_i++; 
+    for (int i = core * 4 / 4; i < (core + 1) * 4 / 4; i++)  {
+        for (int j = 0; j < 5; j++)  {
+            for (int k = 0; k < 2; k++) {  
+                result[i][j] += matA[i][k] * matB[k][j]; 
+            }
+        }
+    }
+} 
+```
+- Masing - masing thread menghitung 1 / 4 dari perkalian matriks nya
+
+Print hasil perkalian matriksnya 
+```
+printf("Multiplication of A and B : \n");
+    for (int i = 0; i < rC; i++) { 
+        for (int j = 0; j < cC; j++)  {
+            matC[i*cC+j] = result[i][j];
+            printf("%d ", matC[i*cC+j]);
+        }
+        printf("\n");
+    } 
+```
+- result matriks di masukkan ke matriks C, dan di print
+
+###4b
+Untuk shared memory memory nya
+```
+    key_t key = 1234;
+    int shmid = shmget(key, sizeof(int)*rC*cC, IPC_CREAT | 0666);
+    matC = (int *)shmat(shmid, NULL, 0);
+```
+
+Print hasil perkalian matriks dan program 4a
+```
+printf("Perkalian Matriks A dan Matriks B : \n");
+    for (int i = 0; i < rC; i++) { 
+        for (int j = 0; j < cC; j++)  {
+            printf("%d ", matC[i*cC+j]); 
+            arr[i][j] = matC[i*cC+j];
+        }
+        printf("\n");
+    } 
+```
+- Hasil dari print matriks C di masukkan ke arr untuk di pakai saat menambahkan masing - masing elemen matriks
+
+Deklarasi thread untuk penambahan elemen masing" matriks
+```
+    for (int i = 0; i < count; i++) { 
+        int* p; 
+        pthread_create(&threads[i], NULL, plus, (void*)(p)); 
+    } 
+  
+    for (int i = 0; i < count; i++)  
+        pthread_join(threads[i], NULL);     
+```
+- Masing - masing thread sejumlah lelemen hasil perkalian matriks (ada 20 thread, karena 4 x 5 = 20)
+- Join semua thread
+
+Fungsi untuk menambahkan masing - masing elemen hasil perkalian matriks
+```
+void *plus(void *arg) {
+    for (int i = 0; i < 4; i++)  {
+        for (int j = 0; j < 5; j++) {  
+            int n = arr[i][j];
+            for (int k = 1; k <= n; k ++) {
+                res += k;
+            }
+            arr[i][j] = res;
+        }
+    }
+    pthread_exit(0);
+}
+```
+- Menghitung penambahan di mulai dari 1 hingga n (elemen arr[i][j]), lalu hasilnya += k dan di masukkan ke arr kembali
+- Apabila sudah selesai melakukan operasi, exit thread
+
+Untuk print hasil penambahan matriks
+```
+printf("\nHasil penambahan matriks : \n");
+    for (int i = 0; i < rC; i++) { 
+        for (int j = 0; j < cC; j++)  {
+            printf("%d ",arr[i][j]); 
+        }
+        printf("\n");
+    } 
+```
+- Print arr yang tadi berisi hasil penambahan
+
+###4c
+```
+int main () {
+int main() 
+{ 
+	int p1[2];
+
+	pid_t p;
+    int count=0; 
+    DIR * directory = opendir("/home/amelia/amel/SoalShiftSISOP20_modul3_F10/soal4");
+    struct dirent * de;
+    struct stat mystat;
+
+	p = fork(); 
+
+	if (p < 0) 
+	{ 
+		fprintf(stderr, "fork Failed" ); 
+		return 1; 
+	} 
+
+	// Parent process 
+	else if (p > 0) 
+	{
+        dup2(p1[0],0);
+	    while((de = readdir(directory)) != NULL){
+            if(strcmp(de->d_name, ".") == 0 || strcmp(de->d_name, "..") == 0) continue;
+            if(de->d_type == DT_REG || de->d_type == DT_DIR){
+                count++;
+            }
+        }
+        printf("%d\n", count);
+	} 
+
+	// child process 
+	else
+	{ 
+		dup2(p1[1], 1);
+        close(p1[0]); 
+        char buf[512];
+        directory = opendir("/home/amelia/amel/SoalShiftSISOP20_modul3_F10/soal4");
+        while((de = readdir(directory)) != NULL)
+        {
+            sprintf(buf, "%s/%s", "/home/amelia/amel/SoalShiftSISOP20_modul3_F10/soal4", de->d_name);
+            stat(buf, &mystat);
+            printf("%zu\t %s\n",mystat.st_size, de->d_name);
+        }
+        closedir(directory);
+ 	} 
+} 
+}
+```
+- Array 2 dimensi p , dimana p[0] untuk reading dan p[1] untuk writing
+- Menggunakan duplicate untuk meng input hasil dari child dan dimasukkan ke proses parent
+- Pada proses child, membuka directory dan meng list apa saja file yang ada di dalamnya 
+- Hasil nama - nama dari file yang ada di direktori sekarang menjadi input untuk proses parent
+- Pada parent process, menduplikat hasil dari child proses. Apabila directory berupa . atau .., maka tidak dihitung. Count ++ untuk menghitung jumlah file di direktori dan di print
